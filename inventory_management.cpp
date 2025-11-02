@@ -17,6 +17,7 @@ struct Settings {
     int pageSize = 10;
     bool autosave = false;
     std::string sortField = "id"; // id, name, category, supplier, quantity, price
+    std::string configFile = "config.json"; // new line for config file
 } settings;
 
 static void pause() {
@@ -142,6 +143,7 @@ static void settingsUI(Inventory& inv) {
         std::cout << "2) Page size: " << settings.pageSize << '\n';
         std::cout << "3) Autosave: " << (settings.autosave ? "On" : "Off") << '\n';
         std::cout << "4) Reload data file now\n";
+        std::cout << "5) Config file: " << settings.configFile << '\n'; // new config option
         std::cout << "0) Back\n";
         std::string c = readLine("Choose: ");
         if (c == "1") {
@@ -162,6 +164,13 @@ static void settingsUI(Inventory& inv) {
         } else if (c == "4") {
             if (inv.loadFromFile(settings.dataFile)) std::cout << "Reloaded.\n"; else std::cout << "Reload failed.\n";
             pause();
+        } else if (c == "5") { // config file handling
+            std::string newConfig = readLine("Enter new config file path: ");
+            if (!newConfig.empty()) {
+                settings.configFile = newConfig;
+                std::cout << "Config file set to " << settings.configFile << '\n';
+                pause();
+            }
         } else if (c == "0") break;
     }
 }
@@ -169,6 +178,17 @@ static void settingsUI(Inventory& inv) {
 int main() {
     Inventory inv;
     inv.loadFromFile(settings.dataFile); // ignore failure (file may not exist)
+
+    // Persist settings: load from config file if exists
+    if (std::ifstream configIn(settings.configFile)) {
+        nlohmann::json j;
+        configIn >> j;
+        settings.dataFile = j.value("dataFile", settings.dataFile);
+        settings.pageSize = j.value("pageSize", settings.pageSize);
+        settings.autosave = j.value("autosave", settings.autosave);
+        settings.sortField = j.value("sortField", settings.sortField);
+        configIn.close();
+    }
 
     while (true) {
         clearScreen();
@@ -268,5 +288,29 @@ int main() {
         }
     }
 
+    // Persist settings: save to config file on exit
+    nlohmann::json j;
+    j["dataFile"] = settings.dataFile;
+    j["pageSize"] = settings.pageSize;
+    j["autosave"] = settings.autosave;
+    j["sortField"] = settings.sortField;
+    std::ofstream configOut(settings.configFile);
+    configOut << j.dump(4);
+    configOut.close();
+
     return 0;
 }
+
+## Extending
+- Persist runtime settings to a small JSON/INI file.
+- Add a GUI (Win32/WinForms/wxWidgets/Qt) or a lightweight web interface.
+- Add unit tests and CI (GitHub Actions) to build on push.
+
+## License
+Pick a license for your repo (MIT recommended for permissive use). Add a `LICENSE` file.
+
+---
+
+If you want, I can:
+- Create a complete `README.md` file in your repo (I created this content for you to save),
+- Add a `.gitignore`, `LICENSE`, and a GitHub Actions workflow that builds the project on push.
